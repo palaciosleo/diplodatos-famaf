@@ -66,12 +66,12 @@ def get_dummy_column(column, top_rank=10, default_word='others'):
 def get_provincia_dummy(df):
     """
 
-    :param df_sucursales:
+    :param df:
     :return:
     """
     try:
         start = time.time()
-        df['provincia_depurada'] = df['provincia'].str.lower()
+        df['provincia_depurada'] = df['nom_provincia'].str.lower()
         for letra, reemplazo in zip(['á', 'é', 'í', 'ó', 'ú'], ['a', 'e', 'i', 'o', 'u']):
             df['provincia_depurada'] = df['provincia_depurada'].str.replace(letra, reemplazo)
         df['provincia_depurada'] = df['provincia_depurada'].str.replace(' ', '_')
@@ -90,13 +90,13 @@ def get_banderaDescripcion_dummy(df):
     """
     try:
         start = time.time()
-        df['banderaDescripcion_depurado'] = df['banderaDescripcion']
+        df['banderaDescripcion_depurado'] = df['banderaDescripcion'].str.lower()
 
         for letra, reemplazo in zip(['á', 'é', 'í', 'ó', 'ú'], ['a', 'e', 'i', 'o', 'u']):
             df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace(letra, reemplazo)
 
         df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace('.', '')
-        df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace('_', ' ')
+        df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace(' ', '_')
 
         df['banderaDescripcion_dummy'] = get_dummy_column(df['banderaDescripcion_depurado'], 15, 'otras_bandDesc')
         stop = time.time()
@@ -257,7 +257,7 @@ def get_mean_std(df):
     try:
         start = time.time()
         precio_mean_std = df.groupby(['producto_id', 'fecha']).agg(precio_mean=('precio', 'mean'),
-                                                                            precio_std=('precio', custom_std))
+                                                                    precio_std=('precio', lambda x: np.std(x)))
         stop = time.time()
         print("get_mean_std:", round(stop-start, 3),"segs")
         return pd.merge(df, precio_mean_std, left_on=['producto_id', 'fecha'], right_index=True)

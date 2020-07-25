@@ -48,11 +48,17 @@ def get_sucursales_df():
 def get_productos_df():
     try:
         start = time.time()
-        producto_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/productos.csv'
-        productos = pd.read_csv(producto_url)
-        stop = time.time()
-        print("get_productos_df:", round(stop-start, 3),"segs")
-        return productos
+        productos = pd.DataFrame()
+        try:
+            productos = pd.read_pickle('productos.pkl', compression='zip')
+        except:
+            producto_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/productos.csv'
+            productos = pd.read_csv(producto_url)
+            pd.to_pickle(productos, 'productos.pkl', compression="zip")
+        finally:
+            stop = time.time()
+            print("get_productos_df:", round(stop-start, 3),"segs")
+            return productos
     except Exception as e:
         raise
 
@@ -60,27 +66,36 @@ def get_productos_df():
 def get_precios_df():
     try:
         start = time.time()
-        precios_20200412_20200413 = pd.read_csv(
-            'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200412_20200413.csv')
-        precios_20200419_20200419 = pd.read_csv(
-            'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200419_20200419.csv')
-        precios_20200426_20200426 = pd.read_csv(
-            'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200426_20200426.csv')
-        precios_20200502_20200503 = pd.read_csv(
-            'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200502_20200503.csv')
-        precios_20200518_20200518 = pd.read_csv(
-            'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200518_20200518.csv')
-
-        lista_df_px = [precios_20200412_20200413, precios_20200419_20200419, precios_20200426_20200426,
-                       precios_20200502_20200503, precios_20200518_20200518]
-        fecha_px = ['20200412', '20200419', '20200426', '20200502', '20200518']
 
         precios = pd.DataFrame()
-        for df, fecha in zip(lista_df_px, fecha_px):
-            df['fecha'] = fecha
-            precios = pd.concat([precios, df])
-        stop = time.time()
-        print("get_precios_df:", round(stop-start, 3),"segs")
-        return precios
+
+        try:
+            precios = pd.read_pickle('precios.pkl', compression='zip')
+        except:
+            precios_20200412_20200413 = pd.read_csv(
+                'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200412_20200413.csv')
+            precios_20200419_20200419 = pd.read_csv(
+                'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200419_20200419.csv')
+            precios_20200426_20200426 = pd.read_csv(
+                'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200426_20200426.csv')
+            precios_20200502_20200503 = pd.read_csv(
+                'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200502_20200503.csv')
+            precios_20200518_20200518 = pd.read_csv(
+                'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200518_20200518.csv')
+
+            lista_df_px = [precios_20200412_20200413, precios_20200419_20200419, precios_20200426_20200426,
+                           precios_20200502_20200503, precios_20200518_20200518]
+            fecha_px = ['20200412', '20200419', '20200426', '20200502', '20200518']
+
+            for df, fecha in zip(lista_df_px, fecha_px):
+                df['fecha'] = fecha
+                precios = pd.concat([precios, df])
+
+            pd.to_pickle(precios, 'precios.pkl', compression="zip")
+        finally:
+            stop = time.time()
+            print("get_precios_df:", round(stop - start, 3), "segs")
+            return precios
+
     except Exception as e:
         raise
