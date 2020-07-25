@@ -34,13 +34,28 @@ def main():
 
         precios = tools.get_outlier_by_mean(precios)
 
+        # Preparo el dataset con columnas auxiliarees de cantidad y um
+        productos = tools.get_initial_cleanup(productos)
+
         # Llamo a la funcion extractora de 'um' y 'cantidad' del nombre_depurado
         cant_en_nombre_prod, um_en_nombre_prod = tools.get_um_presentacion_from_nombre(productos)
         # Guardo el resultado de la funcion en las respectivas NUEVAS columnas
+
         productos['cant_en_nombre_prod'] = cant_en_nombre_prod
         productos['um_en_nombre_prod'] = um_en_nombre_prod
-
+        del cant_en_nombre_prod
+        del um_en_nombre_prod
         productos = tools.get_um_fixed(productos)
+
+        um_limpia, cant_limpia = tools.get_presentacion_limpia(productos)
+
+        productos['um_limpia'] = um_limpia
+        productos['cant_limpia'] = cant_limpia
+        del um_limpia
+        del cant_limpia
+
+        productos = tools.get_marca_dummy(productos)
+
         print('a')
 
         # Combinar Datasets y eliminar filas que no matcheen

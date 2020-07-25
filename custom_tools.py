@@ -1,6 +1,103 @@
+from unidecode import unidecode
 import pandas as pd
 import numpy as np
 import re
+import time
+
+spanish_stopwords = ['ante', 'bajo', 'cabe', 'con', 'contra', 'de', 'desde',
+                     'durante', 'en', 'entre', 'hacia', 'hasta', 'mediante',
+                     'para', 'por', 'segun', 'sin', 'sobre', 'tras', 'la', 'las', 'los', 'del', 'el', 'a', 'y']
+
+
+
+
+def limpiar_palabras(columna, limpiar_stopwords=True):
+    """
+
+    :param columna:
+    :param limpiar_stopwords:
+    :return:
+    """
+    try:
+        columna_limpia = []
+
+        for contenido in columna:
+            contenido = contenido.lower()
+            contenido = unidecode(contenido)
+
+            if limpiar_stopwords:
+                palabra_limpia = ''
+                palabras = contenido.split(' ')
+
+                for palabra in palabras:
+                    if palabra not in spanish_stopwords:
+                        palabra_limpia += palabra.strip() + ' '
+                columna_limpia.append(palabra_limpia.strip())
+            else:
+                columna_limpia.append(contenido)
+
+        return columna_limpia
+    except Exception as e:
+        raise
+
+
+def get_dummy_column(column, top_rank=10, default_word='others'):
+    """
+    Esta funcion acepta una columna y una lista de palabras mas frecuentes
+    Con ello, crea una nueva lista la cual contiene la palabra original (si se encuentra dentro de las mas frecuentes)
+    o le pone la palabra suministrada
+    :param column: Columna sobre la cual aplicar la "dummyzacion"
+    :param top_rank: Cantidad de palabras a considerar para la "dummyzacion"
+    :param default_word: Se utiliza esta palabra como valor por defecto si no se encuentra dentro de las mas frecuentes
+    :return: Columna con palabras dummys
+    """
+    try:
+        dummy_list = column.value_counts().reset_index()[:top_rank]['index'].tolist()
+        dummy_column = []
+        for row in column:
+            valor_dummy = default_word
+            if row in dummy_list:
+                valor_dummy = row
+            dummy_column.append(valor_dummy)
+
+        return dummy_column
+    except Exception as e:
+        raise
+
+
+def get_sucursales_dummy(df_sucursales):
+    """
+
+    :param df_sucursales:
+    :return:
+    """
+    try:
+        start = time.time()
+        df = df_sucursales.copy()
+        stop = time.time()
+        print("get_sucursales_dummy:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_marca_dummy(df_productos):
+    """
+    Devuelve el Dataframe con la columna de "marca_dummy" lista.
+    :param df_productos: Dataframe de PRODUCTOS
+    :return: Devuelve el Dataframe con la columna de "marca_dummy" lista
+    """
+    try:
+        start = time.time()
+        df = df_productos.copy()
+        df['marca_depurada'] = limpiar_palabras(df['marca'])
+        df['marca_depurada'] = df['marca_depurada'].apply(lambda x: '_'.join(x.split(' ')))
+        df['marca_dummy'] = get_dummy_column(df['marca_depurada_unida'], 10, 'otras_marcas')
+        stop = time.time()
+        print("get_marca_dummy:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
 
 
 def get_idreferencia(df):
@@ -11,7 +108,10 @@ def get_idreferencia(df):
     :return: columna con ID de Referencia
     """
     try:
+        start = time.time()
         diccionario = df.groupby(['nombre', 'marca', 'presentacion'])['id'].apply(lambda x: x.tolist()).to_dict()
+        stop = time.time()
+        print("get_idreferencia:", round(stop-start, 3),"segs")
         return [sorted(diccionario.get((producto.nombre, producto.marca, producto.presentacion)))[0]
             for idx, producto in df.iterrows()]
     except Exception as e:
@@ -34,6 +134,26 @@ def is_float(number):
         return False
 
 
+def get_initial_cleanup(df_productos):
+    """
+    Realizar una serie de limpiezas y extracciones iniciales
+    :param df_productos: Dataframe PRODUCTOS
+    :return: Dataframe con nuevas columnas
+    """
+    try:
+        start = time.time()
+        df = df_productos.copy()
+        df['nombre_depurado'] = df['nombre'].str.lower().fillna('')
+        df['presentacion_depurada'] = df['presentacion'].str.lower()
+        df['um_en_presentacion'] = df['presentacion_depurada'].str[-2:]
+        df['cantidad_en_presentacion'] = df['presentacion_depurada'].str[0:-3]
+        stop = time.time()
+        print("get_initial_cleanup:", round(stop-start, 3),"segs")
+        return df
+    except Exception as e:
+        raise
+
+
 def get_um_presentacion_from_nombre(df):
     """
     Extraer la 'um' y 'presentacion' del nombre del producto
@@ -41,6 +161,7 @@ def get_um_presentacion_from_nombre(df):
     :return:   Columnas ['um_en_nombre_prod', 'cant_en_nombre_prod']
     """
     try:
+        start = time.time()
         cant_en_nombre_prod = []
         um_en_nombre_prod = []
         pattern_um = r'(?P<cant_en_nombre_prod>[\d\.]+)\s?(?P<um_en_nombre_prod>\D{1,3}$)'
@@ -59,8 +180,8 @@ def get_um_presentacion_from_nombre(df):
 
             cant_en_nombre_prod.append(cantidad)
             um_en_nombre_prod.append(um)
-
-
+        stop = time.time()
+        print("get_um_presentacion_from_nombre:", round(stop-start, 3),"segs")
         return cant_en_nombre_prod, um_en_nombre_prod
 
     except Exception as e:
@@ -109,8 +230,11 @@ def get_mean_std(df):
     :return: Dataframe original con las columnas ['mean' , 'std']
     """
     try:
+        start = time.time()
         precio_mean_std = df.groupby(['producto_id', 'fecha']).agg(precio_mean=('precio', 'mean'),
                                                                             precio_std=('precio', custom_std))
+        stop = time.time()
+        print("get_mean_std:", round(stop-start, 3),"segs")
         return pd.merge(df, precio_mean_std, left_on=['producto_id', 'fecha'], right_index=True)
     except Exception as e:
         raise
@@ -127,5 +251,99 @@ def get_outlier_by_mean(df_precios):
         df.loc[df['precio'] > df['precio_mean'] + 3 * df['precio_std'], 'outlier_by_mean'] = 'extremo'
         df.loc[df['precio'] <= df['precio_mean'] + 3 * df['precio_std'], 'outlier_by_mean'] = 'normal'
         return df
+    except Exception as e:
+        raise
+
+
+def is_pack(nombre_producto):
+    # En el peor de los casos, si la palabra 'pack' esta al ultimo de la cadena, la funcion demora "23.5 µs per loop"
+    for palabra in nombre_producto.split(' '):
+        if re.search(r'^pack', palabra) is not None:
+            return True
+    return False
+
+
+def is_pack(nombre_producto):
+    """
+    Funcion auxiliar para detectar si una cadena tiene la palabra 'pack'
+    :param nombre_producto:
+    :return: True si la palabra contiene la regex 'pack'
+    """
+    try:
+        for palabra in nombre_producto.split(' '):
+            if re.search(r'^pack', palabra) is not None:
+                return True
+        return False
+    except Exception as e:
+        raise
+
+
+def get_presentacion_limpia(df):
+    """
+    Obtiene la mejor presentacion posible de aquel producto cuya presentacion original y la presentacion
+    presente en el nombre no coincida
+    :param df: Dataframe PRODUCTOS
+    :return: Columnas ['um_limpia', 'cant_limpia]
+    """
+    try:
+        start = time.time()
+        um_limpia = []
+        cant_limpia = []
+
+        pack_pattern = r'^.*\s\d{1,3}\s{0,1}\w{1,3}\s[y\+]\s.*\d{1,3}\s{0,1}\w{1,3}.*$'
+        un_pattern = r'(?P<cant>[\d]+)\sun'
+
+        for idx, producto in df.iterrows():
+            producto_um_limpia = ''
+            producto_cant_limpia = ''
+
+            if is_pack(producto['nombre_depurado']):
+                producto_um_limpia = 'pack'
+                producto_cant_limpia = 1
+
+            elif re.search(pack_pattern, producto['nombre_depurado']) is not None:
+                producto_um_limpia = 'pack'
+                producto_cant_limpia = 1
+
+            elif producto['um_en_presentacion'] == producto['um_en_nombre_prod']:
+                producto_um_limpia = producto['um_en_presentacion']
+
+                if float(producto['cantidad_en_presentacion']) == float(producto['cant_en_nombre_prod']):
+                    producto_cant_limpia = producto['cantidad_en_presentacion']
+                else:
+                    producto_cant_limpia = producto['cant_en_nombre_prod']
+
+            elif float(producto['cantidad_en_presentacion']) == float(producto['cant_en_nombre_prod']):
+                producto_cant_limpia = producto['cant_en_nombre_prod']
+                if producto['um_en_nombre_prod'] in df['um_en_presentacion'].unique():
+                    producto_um_limpia = producto['um_en_nombre_prod']
+                else:
+                    producto_um_limpia = producto['um_en_presentacion']
+
+            else:
+                extraer_unid = re.search(un_pattern, producto['nombre_depurado'])
+                if extraer_unid is not None:
+                    producto_um_limpia = 'un'
+                    producto_cant_limpia = extraer_unid.group(
+                        'cant')  ## el 'cant' sale de un "extractor" que se define en el patron.
+                elif producto['um_en_presentacion'] == 'un':
+                    producto_um_limpia = producto['um_en_presentacion']
+                    producto_cant_limpia = producto['cantidad_en_presentacion']
+
+                elif producto['um_en_nombre_prod'] in df['um_en_presentacion'].unique():
+                    producto_um_limpia = producto['um_en_nombre_prod']
+                    producto_cant_limpia = producto['cant_en_nombre_prod']
+
+                else:
+                    producto_um_limpia = producto['um_en_presentacion']
+                    producto_cant_limpia = producto['cantidad_en_presentacion']
+
+            um_limpia.append(producto_um_limpia)
+            cant_limpia.append(float(producto_cant_limpia))
+
+        stop = time.time()
+        print("get_presentacion_limpia:", round(stop-start, 3),"segs")
+        return um_limpia, cant_limpia
+
     except Exception as e:
         raise

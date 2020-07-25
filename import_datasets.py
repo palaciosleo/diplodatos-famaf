@@ -1,9 +1,11 @@
 import pandas as pd
 from io import StringIO
+import time
 
 
 def get_sucursales_df():
     try:
+        start = time.time()
         sucursal_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/sucursales.csv'
         sucursales = pd.read_csv(sucursal_url)
         provincia_txt = """provincia	nom_provincia	region
@@ -36,7 +38,8 @@ def get_sucursales_df():
         entidad_provincia = pd.read_csv(provincia_csv, sep=('\t'))
         entidad_provincia['provincia'] = entidad_provincia['provincia'].str.strip()
         sucursales = sucursales.merge(entidad_provincia, on='provincia')
-
+        stop = time.time()
+        print("get_sucursales_df:", round(stop-start, 3),"segs")
         return sucursales
     except Exception as e:
         raise
@@ -44,9 +47,11 @@ def get_sucursales_df():
 
 def get_productos_df():
     try:
+        start = time.time()
         producto_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/productos.csv'
         productos = pd.read_csv(producto_url)
-
+        stop = time.time()
+        print("get_productos_df:", round(stop-start, 3),"segs")
         return productos
     except Exception as e:
         raise
@@ -54,6 +59,7 @@ def get_productos_df():
 
 def get_precios_df():
     try:
+        start = time.time()
         precios_20200412_20200413 = pd.read_csv(
             'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200412_20200413.csv')
         precios_20200419_20200419 = pd.read_csv(
@@ -73,7 +79,8 @@ def get_precios_df():
         for df, fecha in zip(lista_df_px, fecha_px):
             df['fecha'] = fecha
             precios = pd.concat([precios, df])
-
+        stop = time.time()
+        print("get_precios_df:", round(stop-start, 3),"segs")
         return precios
     except Exception as e:
         raise
