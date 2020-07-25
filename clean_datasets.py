@@ -54,7 +54,18 @@ def main():
         del um_limpia
         del cant_limpia
 
-        productos = tools.get_marca_dummy(productos)
+        #productos = tools.get_marca_dummy(productos)
+
+        productos = pd.concat([productos, pd.get_dummies(productos['um_limpia'], prefix='um')], axis=1)
+
+        sucursales = tools.get_provincia_dummy(sucursales)
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['provincia_depurada'], prefix='prov')], axis=1)
+
+        sucursales['sucursalTipo_depurado'] = sucursales['sucursalTipo'].str.lower()
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['sucursaltipo_depurado'], prefix='sucTipo')], axis=1)
+
+        sucursales = tools.get_banderaDescripcion_dummy(sucursales)
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['banderaDescripcion_dummy'], prefix='prov')], axis=1)
 
         print('a')
 

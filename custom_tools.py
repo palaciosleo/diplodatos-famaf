@@ -9,8 +9,6 @@ spanish_stopwords = ['ante', 'bajo', 'cabe', 'con', 'contra', 'de', 'desde',
                      'para', 'por', 'segun', 'sin', 'sobre', 'tras', 'la', 'las', 'los', 'del', 'el', 'a', 'y']
 
 
-
-
 def limpiar_palabras(columna, limpiar_stopwords=True):
     """
 
@@ -65,7 +63,7 @@ def get_dummy_column(column, top_rank=10, default_word='others'):
         raise
 
 
-def get_sucursales_dummy(df_sucursales):
+def get_provincia_dummy(df):
     """
 
     :param df_sucursales:
@@ -73,8 +71,36 @@ def get_sucursales_dummy(df_sucursales):
     """
     try:
         start = time.time()
-        df = df_sucursales.copy()
+        df['provincia_depurada'] = df['provincia'].str.lower()
+        for letra, reemplazo in zip(['á', 'é', 'í', 'ó', 'ú'], ['a', 'e', 'i', 'o', 'u']):
+            df['provincia_depurada'] = df['provincia_depurada'].str.replace(letra, reemplazo)
+        df['provincia_depurada'] = df['provincia_depurada'].str.replace(' ', '_')
         stop = time.time()
+        print("get_provincia_dummy:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_banderaDescripcion_dummy(df):
+    """
+
+    :param df_sucursales:
+    :return:
+    """
+    try:
+        start = time.time()
+        df['banderaDescripcion_depurado'] = df['banderaDescripcion']
+
+        for letra, reemplazo in zip(['á', 'é', 'í', 'ó', 'ú'], ['a', 'e', 'i', 'o', 'u']):
+            df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace(letra, reemplazo)
+
+        df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace('.', '')
+        df['banderaDescripcion_depurado'] = df['banderaDescripcion_depurado'].str.replace('_', ' ')
+
+        df['banderaDescripcion_dummy'] = get_dummy_column(df['banderaDescripcion_depurado'], 15, 'otras_bandDesc')
+        stop = time.time()
+
         print("get_sucursales_dummy:", round(stop - start, 3), "segs")
         return df
     except Exception as e:
@@ -188,14 +214,13 @@ def get_um_presentacion_from_nombre(df):
         raise
 
 
-def get_um_fixed(df_productos):
+def get_um_fixed(df):
     """
     Aplica un set expresiones regulares para arreglar algunas 'um'
     :param df: Dataframe de PRODUCTOS
     :return: Dataframe con columna 'um_en_nombre_prod' corregida
     """
     try:
-        df = df_productos.copy()
         df['um_en_nombre_prod'] = df['um_en_nombre_prod'].str.replace('[^a-zA-Z]', '')
         df['um_en_nombre_prod'] = df['um_en_nombre_prod'].str.replace('k\w+', 'kg')
         df['um_en_nombre_prod'] = df['um_en_nombre_prod'].str.replace('g\w+', 'gr')
