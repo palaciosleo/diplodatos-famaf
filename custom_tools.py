@@ -122,15 +122,12 @@ def get_quantiles(df):
 
 def is_outlier(df):
     try:
-        df.loc[df['precio'] > df['cuartil_75'] + (3 * (df['cuartil_75'] - df['cuartil_25'])),
-                                                                                    'rdo_ri_geo'] = 'extremo superior'
-        df.loc[df['precio'] < df['cuartil_25'] - (3 * (df['cuartil_75'] - df['cuartil_25'])),
-                                                                                    'rdo_ri_geo'] = 'extremo inferior'
+        df.loc[df['precio'] > df['cuartil_75'] + (3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'extremo superior'
+        df.loc[df['precio'] < df['cuartil_25'] - (3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'extremo inferior'
 
-        df.loc[(['dfcuartil_75'] + 3 * (df['cuartil_75'] - df['cuartil_25']) >= df['precio']) &
-               (df['precio'] >= df['cuartil_25'] - 3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'normal'
-
+        df.loc[(df['cuartil_75'] + 3 * (df['cuartil_75'] - df['cuartil_25']) >= df['precio']) & (df['precio'] >= df['cuartil_25'] - 3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'normal'
         df.loc[(df['cuartil_25'] == df['cuartil_75']), 'rdo_ri_geo'] = 'normal'
+
         return df
     except Exception as e:
         raise
