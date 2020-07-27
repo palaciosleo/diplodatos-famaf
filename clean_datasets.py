@@ -30,9 +30,9 @@ def main():
         precios = precios[precios['precio'].notna()]
 
         ##productos['id_referencia'] = tools.get_idreferencia(productos)
-        ############precios = tools.get_mean_std(precios)
+        #precios = tools.get_mean_std(precios)
 
-        ############precios = tools.get_outlier_by_mean(precios)
+        #precios = tools.get_outlier_by_mean(precios)
 
         # Preparo el dataset con columnas auxiliarees de cantidad y um
         ##productos = tools.get_initial_cleanup(productos)

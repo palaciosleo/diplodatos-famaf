@@ -9,6 +9,132 @@ spanish_stopwords = ['ante', 'bajo', 'cabe', 'con', 'contra', 'de', 'desde',
                      'para', 'por', 'segun', 'sin', 'sobre', 'tras', 'la', 'las', 'los', 'del', 'el', 'a', 'y']
 
 
+def get_mean(df):
+    """
+    Funcion que calcula la media y desviacion estandar por 'producto_id' y 'fecha'
+    e inserta estas nuevas columnas al dataset.
+    :param df: Recibe el dataframe de PRECIOS
+    :return: Dataframe original con las columnas ['mean' , 'std']
+    """
+    try:
+        start = time.time()
+        precio_mean = df.groupby(['producto_id', 'fecha']).agg(precio_mean=('precio', 'mean'))
+        stop = time.time()
+        print("get_mean:", round(stop-start, 3), "segs")
+        return pd.merge(df, precio_mean, left_on=['producto_id', 'fecha'], right_index=True)
+    except Exception as e:
+        raise
+
+
+def get_df_precios_a_borrar(dict_precio):
+    df = pd.DataFrame()
+    for idx, diff in dict_precio.items():
+        df = df.append({'producto_id':idx[0], 'fecha':idx[1], 'precio_mean_diff':max(diff)}, ignore_index=True)
+    return df
+
+
+def drop_precios_duplicados(df):
+    """
+    Limpia del dataframe de PRECIOS aquellos registros cuyo 'producto_id', 'fecha' y 'sucursal_id' son iguales,
+    manteniendo aquel registro cuya diferencia con la media por 'producto_id' y 'fecha' es  menor.
+    No se utiliza la media por sucursal ya que al haber 2 productos mal reportados, la distancia de ambos con
+    la media es la misma.
+    :param df: Dataframe de PRECIOS
+    :return: Dataframe de PRECIOS depurado
+    """
+    try:
+        start = time.time()
+        # IMPRIMIR len()
+        df = get_mean(df)
+        df['precio_mean_diff'] = abs(df['precio'] - df['precio_mean'])
+
+        precios_duplicados = df[df.duplicated(subset=['producto_id', 'fecha', 'sucursal_id'], keep=False)]
+        dict_precio_mean_diff = precios_duplicados.groupby(['producto_id', 'fecha'])['precio_mean_diff'].apply(
+            lambda x: x.tolist()).to_dict()
+        df_precios_duplicados_borrar = get_df_precios_a_borrar(dict_precio_mean_diff)
+
+
+        for idx, row in df_precios_duplicados_borrar.iterrows():
+            filtro = (df.producto_id == row.producto_id) & \
+                     (df.fecha == row.fecha) & \
+                     (df.precio_mean_diff == row.precio_mean_diff)
+
+            df = df[~filtro]
+
+        # IMPRIMIR len()
+        stop = time.time()
+        return df
+    except Exception as e:
+        raise
+
+
+def drop_sucursales_sin_id(df):
+    """
+    Limpia del dataset resultante de precios  y sucursales aquellos registros cuya informacion de
+    sucursal queda en NaN ya que el ID registrado en precios no coincide con el ID de sucursales
+    :param df_precios_sucursales: Dataframe unido de precios y sucursales
+    :return: Dataset de precios y sucursales depurado
+    """
+    return df[df['id'].notna()]
+
+
+def get_quantiles(df):
+    """
+        Calcula cuantil 25% y 75% para los datos agrupados por 'producto_id', 'fecha' y 'region'
+    :param df: Dataframe de Precios y Sucursales
+    :return: La union de dataframe anterior con el resultante de los datos agrupados
+    """
+    try:
+        grp_quantile = df.groupby(['producto_id', 'fecha', 'region']).agg(
+                                                                cuartil_25=('precio', lambda x: np.quantile(x, .25)),
+                                                                cuartil_75=('precio', lambda x: np.quantile(x, .75)))
+
+        return pd.merge(df, grp_quantile, left_on=['producto_id', 'fecha', 'region'],
+                                                            right_on=['producto_id', 'fecha', 'region'], how='left')
+    except Exception as e:
+        raise
+
+
+def is_outlier(df):
+    try:
+        df.loc[df['precio'] > df['cuartil_75'] + (3 * (df['cuartil_75'] - df['cuartil_25'])),
+                                                                                    'rdo_ri_geo'] = 'extremo superior'
+        df.loc[df['precio'] < df['cuartil_25'] - (3 * (df['cuartil_75'] - df['cuartil_25'])),
+                                                                                    'rdo_ri_geo'] = 'extremo inferior'
+
+        df.loc[(['dfcuartil_75'] + 3 * (df['cuartil_75'] - df['cuartil_25']) >= df['precio']) &
+               (df['precio'] >= df['cuartil_25'] - 3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'normal'
+
+        df.loc[(df['cuartil_25'] == df['cuartil_75']), 'rdo_ri_geo'] = 'normal'
+        return df
+    except Exception as e:
+        raise
+
+
+def drop_outliers_precios_sucursales(df):
+    """
+    Elimina aquellos registros cuyo precio marcamos como outlier segun el producto_id, fecha y region
+    :param df: Dataframe unido de precios y sucursales
+    :return: Dataframe de PRECIOS depurado
+    """
+    try:
+        start = time.time()
+
+        print("DROP DE OUTLIERS DE PRECIOS_SUCURSALES")
+        print("Cantiad de Registros del Dataframe:", len(df))
+
+        df = get_quantiles(df)
+        df = is_outlier(df)
+        df = df[df['rdo_ri_geo'] == 'normal']
+
+        print("Cantiad de Registros del Dataframe Limpio:", len(df))
+        stop = time.time()
+        print("drop_outliers_precios_sucursales:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
 def limpiar_palabras(columna, limpiar_stopwords=True):
     """
 
@@ -232,50 +358,6 @@ def get_um_fixed(df):
 
         return df
 
-    except Exception as e:
-        raise
-
-
-def custom_std(x):
-    """
-    Tenemos que definir esta funcion porque el STD de Pandas devuelve NaN para una muestra de una sola ocurrencia.
-    Para mas informacion ver: https://stackoverflow.com/questions/50306914/pandas-groupby-agg-std-nan
-    Por defecto numpy setea los Delta Degrees of Freedom en 0, mientras que pandas lo setea en 1
-    :param x: Lista de precios agrupados
-    :return: Lista de desviaciones estandares
-    """
-    return np.std(x)
-
-
-def get_mean_std(df):
-    """
-    Funcion que calcula la media y desviacion estandar por 'producto_id' y 'fecha'
-    e inserta estas nuevas columnas al dataset.
-    :param df: Recibe el dataframe de PRECIOS
-    :return: Dataframe original con las columnas ['mean' , 'std']
-    """
-    try:
-        start = time.time()
-        precio_mean_std = df.groupby(['producto_id', 'fecha']).agg(precio_mean=('precio', 'mean'),
-                                                                    precio_std=('precio', lambda x: np.std(x)))
-        stop = time.time()
-        print("get_mean_std:", round(stop-start, 3),"segs")
-        return pd.merge(df, precio_mean_std, left_on=['producto_id', 'fecha'], right_index=True)
-    except Exception as e:
-        raise
-
-
-def get_outlier_by_mean(df_precios):
-    """
-    Calcula si el precio del producto es outlier considerando si es mayor a 3 veces la media
-    :param df_precios: Dataframe de PRECIOS
-    :return: Una copia del dataframe de PRECIOS con la columna 'outlier_by_mean'
-    """
-    try:
-        df = df_precios.copy()
-        df.loc[df['precio'] > df['precio_mean'] + 3 * df['precio_std'], 'outlier_by_mean'] = 'extremo'
-        df.loc[df['precio'] <= df['precio_mean'] + 3 * df['precio_std'], 'outlier_by_mean'] = 'normal'
-        return df
     except Exception as e:
         raise
 
