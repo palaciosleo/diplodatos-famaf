@@ -1,108 +1,87 @@
-# Importación de las librerías necesarias
+import logging
+import os
+from logging.handlers import RotatingFileHandler
+
 import numpy as np
 import pandas as pd
+from io import StringIO
 import re
-import chardet
-import requests
-#from sklearn import preprocessing
+
+import custom_tools as tools
+import import_datasets as impds
+logger = logging.getLogger(__name__)
 
 
-def get_column_stats(column):
-    """
-
-    :param column: Pandas Column to extact stats from
-    :return: pd.Dataframe with count, percent and accumulative percent per value
-    """
-    counts = column.value_counts()
-    percent = column.value_counts(normalize=True).mul(100).round(1).astype(str) + '%'
-    accum = column.value_counts(normalize=True).cumsum().mul(100).round(1).astype(str) + '%'
-
-    return pd.DataFrame({'counts': counts, 'per': percent, 'accum': accum})
+def setup_logger(log_path, log_name):
+    log_file = '.'.join([log_name, 'log'])
+    handler = RotatingFileHandler(filename=os.path.join(log_path, log_file), maxBytes=2 * 1024 * 1024, backupCount=1)
+    handler.setFormatter(logging.Formatter('%(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+    logger.addHandler(handler)
+    logger.setLevel(logging.ERROR)
 
 
-def get_dummy_column(column, top_rank=10, default_word='others'):
-    """
+def main():
+    try:
+        productos = impds.get_productos_df()
+        sucursales = impds.get_sucursales_df()
+        precios = impds.get_precios_df()
 
-    :param column: Pandas Column with values to map
-    :param top_rank: number of top items to map
-    :param default_word:
-    :return: list of column ready to apply pd.get_dummies() on it
-    """
-    dummy_list = column.value_counts().reset_index()[:top_rank]['index'].tolist()
+        productos = productos[productos['marca'].notna()]
+        precios = precios[precios['precio'].notna()]
 
-    dummy_column = []
+        ##productos['id_referencia'] = tools.get_idreferencia(productos)
+        #precios = tools.get_mean_std(precios)
 
-    for row in column:
-        valor_dummy = default_word
-        if row in dummy_list:
-            valor_dummy = row
-        dummy_column.append(valor_dummy)
+        #precios = tools.get_outlier_by_mean(precios)
 
-    return dummy_column
+        # Preparo el dataset con columnas auxiliarees de cantidad y um
+        ##productos = tools.get_initial_cleanup(productos)
 
+        # Llamo a la funcion extractora de 'um' y 'cantidad' del nombre_depurado
+        ##cant_en_nombre_prod, um_en_nombre_prod = tools.get_um_presentacion_from_nombre(productos)
+        # Guardo el resultado de la funcion en las respectivas NUEVAS columnas
 
-# Funcion normalizadora de precios
-# Primero expresamos las unidades en base a Kg, Lt, Un o Mt
-# Luego calculamos el precio normalizado
-def normalizar_precio(precio, unidad, cantidad):
-    if unidad in ['kg', 'lt', 'un', 'mt']:
-        cantidad_normalizada = 1 / cantidad
-    elif unidad in ['gr', 'ml', 'cc']:
-        cantidad_unitaria = cantidad / 1000
-        cantidad_normalizada = 1 / cantidad_unitaria
-    else:
-        print(precio, unidad, cantidad)
+        ##productos['cant_en_nombre_prod'] = cant_en_nombre_prod
+        ##productos['um_en_nombre_prod'] = um_en_nombre_prod
+        ##del cant_en_nombre_prod
+        ##del um_en_nombre_prod
+        ##productos = tools.get_um_fixed(productos)
 
-    precio_normalizado = cantidad_normalizada * precio
-    return precio_normalizado
+        ##um_limpia, cant_limpia = tools.get_presentacion_limpia(productos)
 
+        ##productos['um_limpia'] = um_limpia
+        ##productos['cant_limpia'] = cant_limpia
+        ##del um_limpia
+        ##del cant_limpia
 
-def normalizar_precio(precio, unidad, cantidad):
-    if unidad in ['kg', 'lt', 'un', 'mt']:
-        cantidad_normalizada = 1 / cantidad
-    elif unidad in ['gr', 'ml', 'cc']:
-        cantidad_unitaria = cantidad / 1000
-        cantidad_normalizada = 1 / cantidad / 1000
-    else:
-        print(precio, unidad, cantidad)
+        #productos = tools.get_marca_dummy(productos)
 
-    precio_normalizado = cantidad_normalizada * precio
-    return precio_normalizado
+        ##productos = pd.concat([productos, pd.get_dummies(productos['um_limpia'], prefix='um')], axis=1)
 
+        sucursales = tools.get_provincia_dummy(sucursales)
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['provincia_depurada'], prefix='prov')], axis=1)
 
-def get_factor(df):
-    um_primaria = ['kg', 'lt', 'un', 'mt', 'pack']
-    um_secundaria = ['gr', 'ml', 'cc']
+        sucursales['sucursaltipo_depurado'] = sucursales['sucursalTipo'].str.lower()
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['sucursaltipo_depurado'], prefix='suctipo')], axis=1)
 
-    df.loc[df.um_limpia.isin(um_primaria), 'factor_normalizador'] = 1 / df['cant_limpia']
-    df.loc[df.um_limpia.isin(um_secundaria), 'factor_normalizador'] = 1 / df['cant_limpia'] * 1000
+        sucursales = tools.get_banderaDescripcion_dummy(sucursales)
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['banderaDescripcion_dummy'], prefix='banddesc')], axis=1)
 
+        precios = tools.drop_precios_duplicados(precios)
 
-def is_outlier(precio, media, desvia):
-    precios_limpios.loc[precio > media + 3 * desvia, 'resultado'] = 'extremo'
-    precios_limpios.loc[precio <= media + 3 * desvia, 'resultado'] = 'normal'
+        precios_sucursales = pd.merge(precios, sucursales, left_on='sucursal_id', right_on='id', how='left')
+
+        precios_sucursales = tools.drop_precios_sin_sucursal(precios_sucursales)
+
+        precios_sucursales = tools.drop_outliers_precios_sucursales(precios_sucursales)
+
+        print('a')
+    except Exception as e:
+        logger.error('%s | %s', 'main', str(e))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    script_path = os.path.dirname(__file__)
+    script_name = os.path.basename(__file__).split('.')[0]
+    setup_logger(script_path, script_name)
+    main()
