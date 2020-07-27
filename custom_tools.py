@@ -27,10 +27,36 @@ def get_mean(df):
 
 
 def get_df_precios_a_borrar(dict_precio):
-    df = pd.DataFrame()
-    for idx, diff in dict_precio.items():
-        df = df.append({'producto_id':idx[0], 'fecha':idx[1], 'precio_mean_diff':max(diff)}, ignore_index=True)
-    return df
+    """
+    Recorre el diccionario toma por cada key el 'precio_mean_diff' de mayor valor.
+    :param dict_precio: Diccionario de ('producto_id','fecha'): [precio_mean_diff]
+    :return: Dataframe de producto_id, fecha y max(precio_mean_diff)
+    """
+    try:
+        df = pd.DataFrame()
+        for idx, diff in dict_precio.items():
+            df = df.append({'producto_id': idx[0], 'fecha': idx[1], 'precio_mean_diff': max(diff)}, ignore_index=True)
+        return df
+    except Exception as e:
+        raise
+
+
+def drop_precios_sin_sucursal(df):
+    """
+
+    :param df:
+    :return:
+    """
+    try:
+        print("DROP PRECIOS SIN SUCURSALES")
+        reg_df = len(df)
+        print("Cantidad de Registros del Dataframe:", reg_df)
+        df = df[df['id'].notna()]
+        print("Cantidad de Registros del Dataframe Limpio:", len(df))
+        print('Se han limpiado', (reg_df - len(df)), 'registros')
+        return df
+    except Exception as e:
+        raise
 
 
 def drop_precios_duplicados(df):
@@ -44,38 +70,33 @@ def drop_precios_duplicados(df):
     """
     try:
         start = time.time()
-        # IMPRIMIR len()
+        print("DROP DE PRECIOS DUPLICADOS")
+        reg_df = len(df)
+        print("Cantiad de Registros del Dataframe:", reg_df)
         df = get_mean(df)
         df['precio_mean_diff'] = abs(df['precio'] - df['precio_mean'])
 
         precios_duplicados = df[df.duplicated(subset=['producto_id', 'fecha', 'sucursal_id'], keep=False)]
+
         dict_precio_mean_diff = precios_duplicados.groupby(['producto_id', 'fecha'])['precio_mean_diff'].apply(
             lambda x: x.tolist()).to_dict()
+
         df_precios_duplicados_borrar = get_df_precios_a_borrar(dict_precio_mean_diff)
 
-
         for idx, row in df_precios_duplicados_borrar.iterrows():
-            filtro = (df.producto_id == row.producto_id) & \
-                     (df.fecha == row.fecha) & \
-                     (df.precio_mean_diff == row.precio_mean_diff)
+            filtro = (df.producto_id == row.producto_id) \
+                     & (df.fecha == row.fecha) \
+                     & (df.precio_mean_diff == row.precio_mean_diff)
 
             df = df[~filtro]
 
-        # IMPRIMIR len()
+        print("Cantidad de Registros del Dataframe Limpio:", len(df))
+        print('Se han limpiado', (reg_df - len(df)), 'registros')
+
         stop = time.time()
         return df
     except Exception as e:
         raise
-
-
-def drop_sucursales_sin_id(df):
-    """
-    Limpia del dataset resultante de precios  y sucursales aquellos registros cuya informacion de
-    sucursal queda en NaN ya que el ID registrado en precios no coincide con el ID de sucursales
-    :param df_precios_sucursales: Dataframe unido de precios y sucursales
-    :return: Dataset de precios y sucursales depurado
-    """
-    return df[df['id'].notna()]
 
 
 def get_quantiles(df):
@@ -85,9 +106,13 @@ def get_quantiles(df):
     :return: La union de dataframe anterior con el resultante de los datos agrupados
     """
     try:
+        start = time.time()
         grp_quantile = df.groupby(['producto_id', 'fecha', 'region']).agg(
                                                                 cuartil_25=('precio', lambda x: np.quantile(x, .25)),
                                                                 cuartil_75=('precio', lambda x: np.quantile(x, .75)))
+
+        stop = time.time()
+        print('get_quantiles:', round(stop - start, 3), "segs")
 
         return pd.merge(df, grp_quantile, left_on=['producto_id', 'fecha', 'region'],
                                                             right_on=['producto_id', 'fecha', 'region'], how='left')
@@ -121,13 +146,15 @@ def drop_outliers_precios_sucursales(df):
         start = time.time()
 
         print("DROP DE OUTLIERS DE PRECIOS_SUCURSALES")
-        print("Cantiad de Registros del Dataframe:", len(df))
+        reg_df = len(df)
+        print("Cantiad de Registros del Dataframe:", reg_df)
 
         df = get_quantiles(df)
         df = is_outlier(df)
         df = df[df['rdo_ri_geo'] == 'normal']
 
-        print("Cantiad de Registros del Dataframe Limpio:", len(df))
+        print("Cantidad de Registros del Dataframe Limpio:", len(df))
+        print('Se han limpiado', (reg_df - len(df)), 'registros')
         stop = time.time()
         print("drop_outliers_precios_sucursales:", round(stop - start, 3), "segs")
         return df

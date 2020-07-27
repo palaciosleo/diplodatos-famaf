@@ -65,13 +65,17 @@ def main():
         sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['sucursaltipo_depurado'], prefix='suctipo')], axis=1)
 
         sucursales = tools.get_banderaDescripcion_dummy(sucursales)
-        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['banderaDescripcion_dummy'], prefix='prov')], axis=1)
+        sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['banderaDescripcion_dummy'], prefix='banddesc')], axis=1)
+
+        precios = tools.drop_precios_duplicados(precios)
+
+        precios_sucursales = pd.merge(precios, sucursales, left_on='sucursal_id', right_on='id', how='left')
+
+        precios_sucursales = tools.drop_precios_sin_sucursal(precios_sucursales)
+
+        precios_sucursales = tools.drop_outliers_precios_sucursales(precios_sucursales)
 
         print('a')
-
-        # Combinar Datasets y eliminar filas que no matcheen
-        # Precios con Sucursales
-        # precios[~precios['sucursal_id'].isin(sucursales_sin_id)]
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
 
