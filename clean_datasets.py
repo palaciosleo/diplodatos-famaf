@@ -41,6 +41,8 @@ def main():
         # Guardo el resultado de la funcion en las respectivas NUEVAS columnas
         productos['cant_en_nombre_prod'] = cant_en_nombre_prod
         productos['um_en_nombre_prod'] = um_en_nombre_prod
+
+        # BORRADO DE VARIABLES
         del cant_en_nombre_prod
         del um_en_nombre_prod
         productos = tools.get_um_fixed(productos)
@@ -49,11 +51,12 @@ def main():
 
         productos['um_limpia'] = um_limpia
         productos['cant_limpia'] = cant_limpia
+
+        # BORRADO DE VARIABLES
         del um_limpia
         del cant_limpia
 
         productos = tools.get_marca_dummy(productos)
-
         productos = pd.concat([productos, pd.get_dummies(productos['um_limpia'], prefix='um')], axis=1)
 
         productos_col_drop = ['marca', 'nombre', 'presentacion', 'categoria1', 'categoria2', 'categoria3',
@@ -101,7 +104,16 @@ def main():
 
         stop = time.time()
         print(">>>>>>>>>>>>FIN:", round(stop - start, 3), "segs")
-        print('a')
+
+        precio_sucursal_producto.drop(columns=['precio_mean', 'precio_mean_diff', 'um_limpia',
+                                               'cant_limpia', 'factor_normalizador', 'precio_normalizado'], inplace=True)
+
+        precio_sucursal_producto.drop(columns=['precio', 'producto_id', 'sucursal_id', 'fecha',
+                                               'precio_numerario_normalizado',  'cuartil_25', 'cuartil_75',
+                                               'rdo_ri_geo', 'marca_depurada', 'marca_dummy'], inplace=True)
+
+        pd.to_pickle(precio_sucursal_producto, 'precio_sucursal_producto.pkl', compression="zip")
+
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
 
