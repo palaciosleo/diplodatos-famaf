@@ -141,12 +141,12 @@ def drop_precios_sin_sucursal(df):
     :return: Dataframe PRECIOS_SUCURSAL depurado
     """
     try:
-        print("DROP PRECIOS SIN SUCURSALES")
+        print(">>DROP PRECIOS SIN SUCURSALES")
         reg_df = len(df)
         print("Cantidad de Registros del Dataframe:", reg_df)
         df = df[df['id'].notna()]
         print("Cantidad de Registros del Dataframe Limpio:", len(df))
-        print('Se han limpiado', (reg_df - len(df)), 'registros')
+        print('\n> > > > Se han limpiado', (reg_df - len(df)), 'registros\n')
         return df
     except Exception as e:
         raise
@@ -163,7 +163,7 @@ def drop_precios_duplicados(df):
     """
     try:
         start = time.time()
-        print("DROP DE PRECIOS DUPLICADOS")
+        print(">>DROP DE PRECIOS DUPLICADOS")
         reg_df = len(df)
         print("Cantidad de Registros del Dataframe:", reg_df)
         df = get_mean(df)
@@ -184,7 +184,7 @@ def drop_precios_duplicados(df):
             df = df[~filtro]
 
         print("Cantidad de Registros del Dataframe Limpio:", len(df))
-        print('Se han limpiado', (reg_df - len(df)), 'registros')
+        print('\n> > > > Se han limpiado', (reg_df - len(df)), 'registros\n')
 
         stop = time.time()
         return df
@@ -192,7 +192,7 @@ def drop_precios_duplicados(df):
         raise
 
 
-def get_quantiles(df, group_by_col, col_precio):
+def get_quantiles(df, group_by_col, col_precio, col_q25_name, col_q75_name):
     """
     Calcula cuantil 25% y 75% para los datos agrupados por 'producto_id', 'fecha' y 'region'
     :param df: Dataframe de Precios y Sucursales
@@ -200,9 +200,8 @@ def get_quantiles(df, group_by_col, col_precio):
     """
     try:
         start = time.time()
-        grp_quantile = df.groupby(group_by_col).agg(cuartil_25=(col_precio, lambda x: np.quantile(x, .25)),
-                                                                cuartil_75=(col_precio, lambda x: np.quantile(x, .75)))
-
+        grp_quantile = df.groupby(group_by_col).agg(q25=(col_precio, lambda x: np.quantile(x, .25)), q75=(col_precio, lambda x: np.quantile(x, .75)))
+        grp_quantile = grp_quantile.rename(columns={"q25": col_q25_name, "q75": col_q75_name})
         stop = time.time()
         print('get_quantiles:', round(stop - start, 3), "segs")
 
@@ -236,21 +235,24 @@ def drop_outliers_by_precios(df, group_by_col, col_precio, dataframe):
     """
     try:
         start = time.time()
-
-        print("DROP DE OUTLIERS DE PRECIOS_SUCURSALES")
         reg_df = len(df)
-        print("Cantidad de Registros del Dataframe:", reg_df)
 
-        df = get_quantiles(df, group_by_col, col_precio)
         if dataframe == 'precio_sucursal':
+            print(">>DROP DE OUTLIERS DE PRECIO_SUCURSAL")
+            print("Cantidad de Registros del Dataframe:", reg_df)
+
+            df = get_quantiles(df, group_by_col, col_precio, 'cuartil_25', 'cuartil_75')
             df = is_outlier(df, df['precio'], df['cuartil_25'], df['cuartil_75'], 'rdo_ri_geo')
             df = df[df['rdo_ri_geo'] == 'normal']
         else:
+            print(">>DROP DE OUTLIERS DE PRECIO_SUCURSAL_PRODUCTO")
+            print("Cantidad de Registros del Dataframe:", reg_df)
+            df = get_quantiles(df, group_by_col, col_precio, 'relat_cuartil_25', 'relat_cuartil_75')
             df = is_outlier(df, df['precio_relativo'], df['relat_cuartil_25'], df['relat_cuartil_75'], 'rdo_ri_geo_relativo')
             df = df[df['rdo_ri_geo_relativo'] == 'normal']
 
         print("Cantidad de Registros del Dataframe Limpio:", len(df))
-        print('Se han limpiado', (reg_df - len(df)), 'registros')
+        print('\n> > > > Se han limpiado', (reg_df - len(df)), 'registros\n')
         stop = time.time()
         print("drop_outliers_precios_sucursales:", round(stop - start, 3), "segs")
         return df

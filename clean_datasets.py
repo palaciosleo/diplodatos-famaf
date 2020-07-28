@@ -106,7 +106,7 @@ def main():
         precio_sucursal_producto = tools.drop_outliers_by_precios(precio_sucursal_producto, ['producto_id', 'fecha', 'region'], 'precio_relativo','precio_sucursal_producto')
 
         stop = time.time()
-        print(">>>>>>>>>>>>FIN:", round(stop - start, 3), "segs")
+        print("\n\n>>>>>>>>>>>>FIN:", round(stop - start, 3), "segs")
 
         precio_sucursal_producto.drop(columns=['precio_mean', 'precio_mean_diff', 'um_limpia',
                                                'cant_limpia', 'factor_normalizador', 'precio_normalizado'], inplace=True)
