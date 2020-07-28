@@ -9,9 +9,101 @@ spanish_stopwords = ['ante', 'bajo', 'cabe', 'con', 'contra', 'de', 'desde',
                      'para', 'por', 'segun', 'sin', 'sobre', 'tras', 'la', 'las', 'los', 'del', 'el', 'a', 'y']
 
 
+def function_model(df):
+    """
+    Calcula el precio relativo de los productos en base al precio del bien numerario elegido
+    :param df: Dataframe PRODUCTO_SUCURSAL_PRECIO
+    :return: Dataframe con 'precio_relativo' calculado
+    """
+    try:
+        start = time.time()
+        df = df
+        stop = time.time()
+        print("function_model:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_precio_numerario_normalizado(df, producto_numerario_id):
+    """
+    Calcula el precio normalizado del bien numerario considerando la media por fecha
+    :param df: Dataframe PRODUCTO_SUCURSAL_PRECIO
+    :return: Dataframe con 'precio_relativo' calculado
+    """
+    try:
+        start = time.time()
+        bien_numerario_by_fecha = df[df['producto_id'] == producto_numerario_id].groupby('fecha') \
+                                        .agg(precio_numerario_normalizado=('precio_normalizado', 'mean')).reset_index()
+
+        df = pd.merge(df, bien_numerario_by_fecha[['fecha', 'precio_numerario_normalizado']],
+                                                                                    left_on='fecha', right_on='fecha')
+        stop = time.time()
+        print("get_precio_numerario_normalizado:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_factor_normalizador(df):
+    """
+    Calcula el factor con el cual llevar todas las unidades de medidas secundarias a unidades de medida primarias.
+    Con este factor luego se extrapola el calculo del precio normalizado correspondiente
+    :param df: Dataframe PRODUCTO_SUCURSAL_PRECIO
+    :return: Dataframe con 'factor_normalizador' calculado
+    """
+    try:
+        start = time.time()
+        um_primaria = ['kg', 'lt', 'un', 'mt', 'pack']
+        um_secundaria = ['gr', 'ml', 'cc']
+
+        df.loc[df['um_limpia'].isin(um_primaria), 'factor_normalizador'] = 1 / df['cant_limpia']
+        df.loc[df['um_limpia'].isin(um_secundaria), 'factor_normalizador'] = 1 / df['cant_limpia'] * 1000
+        stop = time.time()
+        print("get_factor_normalizador:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_precio_normalizado(df):
+    """
+    Calcula el precio normalizado de los productos en base a la 'um_limpia' y 'cant_limpia'
+    :param df: Dataframe PRODUCTO_SUCURSAL_PRECIO
+    :return: Dataframe con 'precio_relativo' calculado
+    """
+    try:
+        start = time.time()
+        df = get_factor_normalizador(df)
+        df['precio_normalizado'] = df['precio'] * df['factor_normalizador']
+        stop = time.time()
+        print("get_precio_normalizado:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_precio_relativo(df, producto_numerario_id='7794000960077'):
+    """
+    Calcula el precio relativo de los productos en base al precio del bien numerario elegido
+    :param df: Dataframe PRODUCTO_SUCURSAL_PRECIO
+    :param producto_numerario_id: ID del bien numerario seleccionado.
+    :return: Dataframe con 'precio_relativo' calculado
+    """
+    try:
+        start = time.time()
+        df = get_precio_numerario_normalizado(df, producto_numerario_id)
+        df['precio_relativo'] = df['precio_normalizado'] / df['precio_numerario_normalizado']
+        stop = time.time()
+        print("get_precio_relativo:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
 def get_mean(df):
     """
-    Funcion que calcula la media y desviacion estandar por 'producto_id' y 'fecha'
+    Funcion que calcula la media  por 'producto_id' y 'fecha'
     e inserta estas nuevas columnas al dataset.
     :param df: Recibe el dataframe de PRECIOS
     :return: Dataframe original con las columnas ['mean' , 'std']
@@ -43,9 +135,10 @@ def get_df_precios_a_borrar(dict_precio):
 
 def drop_precios_sin_sucursal(df):
     """
-
-    :param df:
-    :return:
+    Elimina aquellos registros del dataframe de precios_sucursales para los cuales el id de sucursal asociado
+    al registro en precios no existe en sucursales
+    :param df: Dataframe PRECIOS_SUCURSAL
+    :return: Dataframe PRECIOS_SUCURSAL depurado
     """
     try:
         print("DROP PRECIOS SIN SUCURSALES")
@@ -72,7 +165,7 @@ def drop_precios_duplicados(df):
         start = time.time()
         print("DROP DE PRECIOS DUPLICADOS")
         reg_df = len(df)
-        print("Cantiad de Registros del Dataframe:", reg_df)
+        print("Cantidad de Registros del Dataframe:", reg_df)
         df = get_mean(df)
         df['precio_mean_diff'] = abs(df['precio'] - df['precio_mean'])
 
@@ -144,7 +237,7 @@ def drop_outliers_precios_sucursales(df):
 
         print("DROP DE OUTLIERS DE PRECIOS_SUCURSALES")
         reg_df = len(df)
-        print("Cantiad de Registros del Dataframe:", reg_df)
+        print("Cantidad de Registros del Dataframe:", reg_df)
 
         df = get_quantiles(df)
         df = is_outlier(df)
@@ -268,7 +361,7 @@ def get_marca_dummy(df_productos):
         df = df_productos.copy()
         df['marca_depurada'] = limpiar_palabras(df['marca'])
         df['marca_depurada'] = df['marca_depurada'].apply(lambda x: '_'.join(x.split(' ')))
-        df['marca_dummy'] = get_dummy_column(df['marca_depurada_unida'], 10, 'otras_marcas')
+        df['marca_dummy'] = get_dummy_column(df['marca_depurada'], 10, 'otras_marcas')
         stop = time.time()
         print("get_marca_dummy:", round(stop - start, 3), "segs")
         return df
@@ -478,3 +571,5 @@ def get_presentacion_limpia(df):
 
     except Exception as e:
         raise
+
+

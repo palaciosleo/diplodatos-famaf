@@ -6,41 +6,50 @@ import time
 def get_sucursales_df():
     try:
         start = time.time()
-        sucursal_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/sucursales.csv'
-        sucursales = pd.read_csv(sucursal_url)
-        provincia_txt = """provincia	nom_provincia	region
-        AR-A	Salta	Norte Grande
-        AR-B	Provincia de Buenos Aires	Centro
-        AR-C	Ciudad Autónoma de Buenos Aires	Centro
-        AR-D	San Luis	Cuyo
-        AR-E	Entre Ríos	Centro
-        AR-F	La Rioja	Cuyo
-        AR-G	Santiago del Estero	Norte Grande
-        AR-H	Chaco	Norte Grande
-        AR-J	San Juan	Cuyo
-        AR-K	Catamarca	Norte Grande
-        AR-L	La Pampa	Centro
-        AR-M	Mendoza	Cuyo
-        AR-N	Misiones	Norte Grande
-        AR-P	Formosa	Norte Grande
-        AR-Q	Neuquén	Patagonia
-        AR-R	Río Negro	Patagonia
-        AR-S	Santa Fe	Centro
-        AR-T	Tucumán	Norte Grande
-        AR-U	Chubut	Patagonia
-        AR-V	Tierra del Fuego	Patagonia
-        AR-W	Corrientes	Norte Grande
-        AR-X	Córdoba	Centro
-        AR-Y	Jujuy 	Norte Grande
-        AR-Z	Santa Cruz	Patagonia
-        """
-        provincia_csv = StringIO(provincia_txt)
-        entidad_provincia = pd.read_csv(provincia_csv, sep=('\t'))
-        entidad_provincia['provincia'] = entidad_provincia['provincia'].str.strip()
-        sucursales = sucursales.merge(entidad_provincia, on='provincia')
-        stop = time.time()
-        print("get_sucursales_df:", round(stop-start, 3),"segs")
-        return sucursales
+        sucursales = pd.DataFrame()
+
+        try:
+            sucursales = pd.read_pickle('sucursales.pkl', compression='zip')
+        except:
+            sucursal_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/sucursales.csv'
+            sucursales = pd.read_csv(sucursal_url)
+            provincia_txt = """provincia	nom_provincia	region
+                    AR-A	Salta	Norte Grande
+                    AR-B	Provincia de Buenos Aires	Centro
+                    AR-C	Ciudad Autónoma de Buenos Aires	Centro
+                    AR-D	San Luis	Cuyo
+                    AR-E	Entre Ríos	Centro
+                    AR-F	La Rioja	Cuyo
+                    AR-G	Santiago del Estero	Norte Grande
+                    AR-H	Chaco	Norte Grande
+                    AR-J	San Juan	Cuyo
+                    AR-K	Catamarca	Norte Grande
+                    AR-L	La Pampa	Centro
+                    AR-M	Mendoza	Cuyo
+                    AR-N	Misiones	Norte Grande
+                    AR-P	Formosa	Norte Grande
+                    AR-Q	Neuquén	Patagonia
+                    AR-R	Río Negro	Patagonia
+                    AR-S	Santa Fe	Centro
+                    AR-T	Tucumán	Norte Grande
+                    AR-U	Chubut	Patagonia
+                    AR-V	Tierra del Fuego	Patagonia
+                    AR-W	Corrientes	Norte Grande
+                    AR-X	Córdoba	Centro
+                    AR-Y	Jujuy 	Norte Grande
+                    AR-Z	Santa Cruz	Patagonia
+                    """
+            provincia_csv = StringIO(provincia_txt)
+            entidad_provincia = pd.read_csv(provincia_csv, sep=('\t'))
+            entidad_provincia['provincia'] = entidad_provincia['provincia'].str.strip()
+            sucursales = sucursales.merge(entidad_provincia, on='provincia')
+
+            pd.to_pickle(sucursales, 'sucursales.pkl', compression="zip")
+
+        finally:
+            stop = time.time()
+            print("get_sucursales_df:", round(stop-start, 3),"segs")
+            return sucursales
     except Exception as e:
         raise
 

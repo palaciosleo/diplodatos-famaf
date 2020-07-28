@@ -2,10 +2,9 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-import numpy as np
 import pandas as pd
-from io import StringIO
-import re
+import time
+
 
 import custom_tools as tools
 import import_datasets as impds
@@ -22,6 +21,7 @@ def setup_logger(log_path, log_name):
 
 def main():
     try:
+        start = time.time()
         productos = impds.get_productos_df()
         sucursales = impds.get_sucursales_df()
         precios = impds.get_precios_df()
@@ -29,34 +29,38 @@ def main():
         productos = productos[productos['marca'].notna()]
         precios = precios[precios['precio'].notna()]
 
-        ##productos['id_referencia'] = tools.get_idreferencia(productos)
-        #precios = tools.get_mean_std(precios)
+        productos['id_referencia'] = tools.get_idreferencia(productos)
 
-        #precios = tools.get_outlier_by_mean(precios)
 
         # Preparo el dataset con columnas auxiliarees de cantidad y um
-        ##productos = tools.get_initial_cleanup(productos)
+        productos = tools.get_initial_cleanup(productos)
 
         # Llamo a la funcion extractora de 'um' y 'cantidad' del nombre_depurado
-        ##cant_en_nombre_prod, um_en_nombre_prod = tools.get_um_presentacion_from_nombre(productos)
+        cant_en_nombre_prod, um_en_nombre_prod = tools.get_um_presentacion_from_nombre(productos)
+
         # Guardo el resultado de la funcion en las respectivas NUEVAS columnas
+        productos['cant_en_nombre_prod'] = cant_en_nombre_prod
+        productos['um_en_nombre_prod'] = um_en_nombre_prod
+        del cant_en_nombre_prod
+        del um_en_nombre_prod
+        productos = tools.get_um_fixed(productos)
 
-        ##productos['cant_en_nombre_prod'] = cant_en_nombre_prod
-        ##productos['um_en_nombre_prod'] = um_en_nombre_prod
-        ##del cant_en_nombre_prod
-        ##del um_en_nombre_prod
-        ##productos = tools.get_um_fixed(productos)
+        um_limpia, cant_limpia = tools.get_presentacion_limpia(productos)
 
-        ##um_limpia, cant_limpia = tools.get_presentacion_limpia(productos)
+        productos['um_limpia'] = um_limpia
+        productos['cant_limpia'] = cant_limpia
+        del um_limpia
+        del cant_limpia
 
-        ##productos['um_limpia'] = um_limpia
-        ##productos['cant_limpia'] = cant_limpia
-        ##del um_limpia
-        ##del cant_limpia
+        productos = tools.get_marca_dummy(productos)
 
-        #productos = tools.get_marca_dummy(productos)
+        productos = pd.concat([productos, pd.get_dummies(productos['um_limpia'], prefix='um')], axis=1)
 
-        ##productos = pd.concat([productos, pd.get_dummies(productos['um_limpia'], prefix='um')], axis=1)
+        productos_col_drop = ['marca', 'nombre', 'presentacion', 'categoria1', 'categoria2', 'categoria3',
+                              'id_referencia', 'nombre_depurado', 'presentacion_depurada', 'um_en_presentacion',
+                              'cantidad_en_presentacion', 'cant_en_nombre_prod', 'um_en_nombre_prod']
+
+        productos.drop(columns=productos_col_drop, inplace=True)
 
         sucursales = tools.get_provincia_dummy(sucursales)
         sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['provincia_depurada'], prefix='prov')], axis=1)
@@ -67,14 +71,36 @@ def main():
         sucursales = tools.get_banderaDescripcion_dummy(sucursales)
         sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['banderaDescripcion_dummy'], prefix='banddesc')], axis=1)
 
+        sucursales_col_drop = ['comercioId', 'banderaId', 'banderaDescripcion', 'comercioRazonSocial', 'provincia',
+                                 'localidad', 'direccion', 'lat', 'lng', 'sucursalNombre', 'sucursalTipo',
+                                 'nom_provincia', 'provincia_depurada', 'sucursaltipo_depurado',
+                                 'banderaDescripcion_depurado', 'banderaDescripcion_dummy']
+
+        sucursales.drop(columns=sucursales_col_drop, inplace=True)
+
         precios = tools.drop_precios_duplicados(precios)
 
-        precios_sucursales = pd.merge(precios, sucursales, left_on='sucursal_id', right_on='id', how='left')
+        precio_sucursal = pd.merge(precios, sucursales, left_on='sucursal_id', right_on='id', how='left')
 
-        precios_sucursales = tools.drop_precios_sin_sucursal(precios_sucursales)
+        del precios
+        del sucursales
 
-        precios_sucursales = tools.drop_outliers_precios_sucursales(precios_sucursales)
+        precio_sucursal = tools.drop_precios_sin_sucursal(precio_sucursal)
+        precio_sucursal.drop(columns='id', inplace=True)
+        precio_sucursal = tools.drop_outliers_precios_sucursales(precio_sucursal)
 
+        precio_sucursal_producto = pd.merge(precio_sucursal, productos, left_on='producto_id', right_on='id', how='left').drop(columns='id')
+
+        del productos
+        del precio_sucursal
+
+        precio_sucursal_producto = tools.get_precio_normalizado(precio_sucursal_producto)
+
+        producto_numerario_id = '7794000960077'
+        precio_sucursal_producto = tools.get_precio_relativo(precio_sucursal_producto, producto_numerario_id)
+
+        stop = time.time()
+        print(">>>>>>>>>>>>FIN:", round(stop - start, 3), "segs")
         print('a')
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
