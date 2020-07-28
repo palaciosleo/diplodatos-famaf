@@ -90,7 +90,8 @@ def main():
 
         precio_sucursal = tools.drop_precios_sin_sucursal(precio_sucursal)
         precio_sucursal.drop(columns='id', inplace=True)
-        precio_sucursal = tools.drop_outliers_precios_sucursales(precio_sucursal)
+
+        precio_sucursal = tools.drop_outliers_by_precios(precio_sucursal, ['producto_id', 'fecha', 'region'], 'precio', 'precio_sucursal')
 
         precio_sucursal_producto = pd.merge(precio_sucursal, productos, left_on='producto_id', right_on='id', how='left').drop(columns='id')
 
@@ -101,6 +102,8 @@ def main():
 
         producto_numerario_id = '7794000960077'
         precio_sucursal_producto = tools.get_precio_relativo(precio_sucursal_producto, producto_numerario_id)
+
+        precio_sucursal_producto = tools.drop_outliers_by_precios(precio_sucursal_producto, ['producto_id', 'fecha', 'region'], 'precio_relativo','precio_sucursal_producto')
 
         stop = time.time()
         print(">>>>>>>>>>>>FIN:", round(stop - start, 3), "segs")

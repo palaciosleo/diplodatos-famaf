@@ -192,45 +192,47 @@ def drop_precios_duplicados(df):
         raise
 
 
-def get_quantiles(df):
+def get_quantiles(df, group_by_col, col_precio):
     """
-        Calcula cuantil 25% y 75% para los datos agrupados por 'producto_id', 'fecha' y 'region'
+    Calcula cuantil 25% y 75% para los datos agrupados por 'producto_id', 'fecha' y 'region'
     :param df: Dataframe de Precios y Sucursales
     :return: La union de dataframe anterior con el resultante de los datos agrupados
     """
     try:
         start = time.time()
-        grp_quantile = df.groupby(['producto_id', 'fecha', 'region']).agg(
-                                                                cuartil_25=('precio', lambda x: np.quantile(x, .25)),
-                                                                cuartil_75=('precio', lambda x: np.quantile(x, .75)))
+        grp_quantile = df.groupby(group_by_col).agg(cuartil_25=(col_precio, lambda x: np.quantile(x, .25)),
+                                                                cuartil_75=(col_precio, lambda x: np.quantile(x, .75)))
 
         stop = time.time()
         print('get_quantiles:', round(stop - start, 3), "segs")
 
-        return pd.merge(df, grp_quantile, left_on=['producto_id', 'fecha', 'region'],
-                                                            right_on=['producto_id', 'fecha', 'region'], how='left')
+        return pd.merge(df, grp_quantile, left_on=group_by_col, right_on=group_by_col, how='left')
     except Exception as e:
         raise
 
 
-def is_outlier(df):
+def is_outlier(df, precio, cuartil_25, cuartil_75, columna_resultado):
     try:
-        df.loc[df['precio'] > df['cuartil_75'] + (3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'extremo superior'
-        df.loc[df['precio'] < df['cuartil_25'] - (3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'extremo inferior'
-
-        df.loc[(df['cuartil_75'] + 3 * (df['cuartil_75'] - df['cuartil_25']) >= df['precio']) & (df['precio'] >= df['cuartil_25'] - 3 * (df['cuartil_75'] - df['cuartil_25'])), 'rdo_ri_geo'] = 'normal'
-        df.loc[(df['cuartil_25'] == df['cuartil_75']), 'rdo_ri_geo'] = 'normal'
+        df.loc[precio > cuartil_75 + (3 * (cuartil_75 - cuartil_25)), columna_resultado] = 'extremo superior'
+        df.loc[precio < cuartil_25 - (3 * (cuartil_75 - cuartil_25)), columna_resultado] = 'extremo inferior'
+        df.loc[(cuartil_75 + 3 * (cuartil_75 - cuartil_25) >= precio) & (
+                                    precio >= cuartil_25 - 3 * (cuartil_75 - cuartil_25)), columna_resultado] = 'normal'
+        df.loc[(cuartil_25 == cuartil_75), columna_resultado] = 'normal'
 
         return df
     except Exception as e:
         raise
 
 
-def drop_outliers_precios_sucursales(df):
+def drop_outliers_by_precios(df, group_by_col, col_precio, dataframe):
     """
-    Elimina aquellos registros cuyo precio marcamos como outlier segun el producto_id, fecha y region
-    :param df: Dataframe unido de precios y sucursales
-    :return: Dataframe de PRECIOS depurado
+    Elimina los registros cuyos precios son outliers segun el rango intercuartilico de la distribucion de precios
+    agrupada por producto_id, fecha y region
+    :param df: Dataframe sobre el cual realizar el drop de registros
+    :param group_by_col: Lista de columnas a agrupar el calculo del rango intercuartilico
+    :param col_precio: Nombre de la columna precio sobre el cual se calcula el rengo
+    :param dataframe: Nombre en string del dataframe sobre el cual se aplican los calculos
+    :return: Dataframe sin precios outliers
     """
     try:
         start = time.time()
@@ -239,9 +241,13 @@ def drop_outliers_precios_sucursales(df):
         reg_df = len(df)
         print("Cantidad de Registros del Dataframe:", reg_df)
 
-        df = get_quantiles(df)
-        df = is_outlier(df)
-        df = df[df['rdo_ri_geo'] == 'normal']
+        df = get_quantiles(df, group_by_col, col_precio)
+        if dataframe == 'precio_sucursal':
+            df = is_outlier(df, df['precio'], df['cuartil_25'], df['cuartil_75'], 'rdo_ri_geo')
+            df = df[df['rdo_ri_geo'] == 'normal']
+        else:
+            df = is_outlier(df, df['precio_relativo'], df['relat_cuartil_25'], df['relat_cuartil_75'], 'rdo_ri_geo_relativo')
+            df = df[df['rdo_ri_geo_relativo'] == 'normal']
 
         print("Cantidad de Registros del Dataframe Limpio:", len(df))
         print('Se han limpiado', (reg_df - len(df)), 'registros')
