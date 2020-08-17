@@ -9,7 +9,7 @@ def get_sucursales_df():
         sucursales = pd.DataFrame()
 
         try:
-            sucursales = pd.read_pickle('sucursales.pkl', compression='zip')
+            sucursales = pd.read_pickle('../models/sucursales.pkl', compression='zip')
         except:
             sucursal_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/sucursales.csv'
             sucursales = pd.read_csv(sucursal_url)
@@ -44,7 +44,7 @@ def get_sucursales_df():
             entidad_provincia['provincia'] = entidad_provincia['provincia'].str.strip()
             sucursales = sucursales.merge(entidad_provincia, on='provincia')
 
-            pd.to_pickle(sucursales, 'sucursales.pkl', compression="zip")
+            pd.to_pickle(sucursales, '../models/sucursales.pkl', compression="zip")
 
         finally:
             stop = time.time()
@@ -59,11 +59,11 @@ def get_productos_df():
         start = time.time()
         productos = pd.DataFrame()
         try:
-            productos = pd.read_pickle('productos.pkl', compression='zip')
+            productos = pd.read_pickle('../models/productos.pkl', compression='zip')
         except:
             producto_url = 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/productos.csv'
             productos = pd.read_csv(producto_url)
-            pd.to_pickle(productos, 'productos.pkl', compression="zip")
+            pd.to_pickle(productos, '../models/productos.pkl', compression="zip")
         finally:
             stop = time.time()
             print("get_productos_df:", round(stop-start, 3),"segs")
@@ -79,7 +79,7 @@ def get_precios_df():
         precios = pd.DataFrame()
 
         try:
-            precios = pd.read_pickle('precios.pkl', compression='zip')
+            precios = pd.read_pickle('../models/precios.pkl', compression='zip')
         except:
             precios_20200412_20200413 = pd.read_csv(
                 'https://raw.githubusercontent.com/solujan/mentoria_2020/master/raw_dataset/precios_20200412_20200413.csv')
@@ -100,7 +100,7 @@ def get_precios_df():
                 df['fecha'] = fecha
                 precios = pd.concat([precios, df])
 
-            pd.to_pickle(precios, 'precios.pkl', compression="zip")
+            pd.to_pickle(precios, '../models/precios.pkl', compression="zip")
         finally:
             stop = time.time()
             print("get_precios_df:", round(stop - start, 3), "segs")

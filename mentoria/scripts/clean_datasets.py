@@ -5,9 +5,8 @@ from logging.handlers import RotatingFileHandler
 import pandas as pd
 import time
 
+from mentoria.scripts import custom_tools as tools, import_datasets as impds
 
-import custom_tools as tools
-import import_datasets as impds
 logger = logging.getLogger(__name__)
 
 
@@ -115,7 +114,7 @@ def main():
                                                'precio_numerario_normalizado',  'cuartil_25', 'cuartil_75',
                                                'rdo_ri_geo', 'marca_depurada', 'marca_dummy'], inplace=True)
 
-        pd.to_pickle(precio_sucursal_producto, 'precio_sucursal_producto.pkl', compression="zip")
+        pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip")
 
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
