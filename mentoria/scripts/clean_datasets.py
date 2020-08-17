@@ -112,9 +112,10 @@ def main():
 
         precio_sucursal_producto.drop(columns=['precio', 'producto_id', 'sucursal_id', 'fecha',
                                                'precio_numerario_normalizado',  'cuartil_25', 'cuartil_75',
-                                               'rdo_ri_geo', 'marca_depurada', 'marca_dummy'], inplace=True)
+                                               'rdo_ri_geo', 'marca_depurada', 'marca_dummy', 'region', 'relat_cuartil_25',
+                                               'relat_cuartil_75', 'rdo_ri_geo_relativo'], inplace=True)
 
-        pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip")
+        pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip", protocol=4)
 
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
