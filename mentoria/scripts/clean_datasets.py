@@ -115,7 +115,7 @@ def main():
                                                'rdo_ri_geo', 'marca_depurada', 'marca_dummy', 'region', 'relat_cuartil_25',
                                                'relat_cuartil_75', 'rdo_ri_geo_relativo'], inplace=True)
 
-        pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip", protocol=4)
+        pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip")
 
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
