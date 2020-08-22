@@ -358,20 +358,42 @@ def get_banderaDescripcion_dummy(df):
         raise
 
 
-def get_marca_dummy(df_productos):
+def get_marca_producto_dummy(df, top_n_palabras=10):
     """
     Devuelve el Dataframe con la columna de "marca_dummy" lista.
     :param df_productos: Dataframe de PRODUCTOS
     :return: Devuelve el Dataframe con la columna de "marca_dummy" lista
     """
     try:
+        stopwords = ['a', 'de', 'en', 'y', 'x', '&', 'la', 'al', 'un', 'con', 'del', 'el', '.', 'para', 'sin'] + \
+                    df['um_limpia'].unique().tolist()
+
         start = time.time()
-        df = df_productos.copy()
-        df['marca_depurada'] = limpiar_palabras(df['marca'])
-        df['marca_depurada'] = df['marca_depurada'].apply(lambda x: '_'.join(x.split(' ')))
-        df['marca_dummy'] = get_dummy_column(df['marca_depurada'], 10, 'otras_marcas')
+
+        df['marca_depurada'] = df['marca'].str.lower()
+
+        for letra, reemplazo in zip(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n']):
+            df['nombre_depurado'] = df['nombre_depurado'].str.replace(letra, reemplazo)
+            df['marca_depurada'] = df['marca_depurada'].str.replace(letra, reemplazo)
+
+        df['nombre_marca'] = df['nombre_depurado'] + ' ' + df['marca_depurada']
+        df['nombre_marca'] = df['nombre_marca'].str.split()  # Separo las palabras
+        df['nombre_marca_depurado'] = df['nombre_marca'].apply(lambda x: set(x))  # Utilizo la funcion set para quitar duplicados
+        df['nombre_marca_depurado'] = df['nombre_marca_depurado'].apply(lambda x: ' '.join(x))  # Vuelvo a juntar las palabras
+        df['nombre_marca_depurado'] = df['nombre_marca_depurado'].str.replace(r'\d', '')
+        df['nombre_marca_depurado'] = df['nombre_marca_depurado'].apply(lambda x: [word for word in x.split() if word not in stopwords])
+
+        df_mp = pd.DataFrame(data=[item for sublist in df['nombre_marca_depurado'].tolist() for item in sublist],
+                             columns=['palabras'])  # Armo un dataframe que contiene una columna con TODAS las palabras
+
+        top_palabras = df_mp['palabras'].value_counts().reset_index().rename(columns={'index': 'palabras', 'palabras': 'cantidad'})
+        lista_palabras_frecuentes = top_palabras['palabras'][:top_n_palabras].to_list() + ['otras']
+
+        df['nombre_marca_depurado'] = df['nombre_marca_depurado'].apply(lambda x: ' '.join(x))  # Vuelvo a juntar las palabras
+        df = get_top_words_dummy_vars(df, 'nombre_marca_depurado', lista_palabras_frecuentes, 'producto_')
+
         stop = time.time()
-        print("get_marca_dummy:", round(stop - start, 3), "segs")
+        print("get_marca_producto_dummy:", round(stop - start, 3), "segs")
         return df
     except Exception as e:
         raise
@@ -394,9 +416,6 @@ def get_idreferencia(df):
     except Exception as e:
         raise
 
-# sucursales.drop(['comercioId', 'banderaId', 'comercioRazonSocial', 'provincia', 'localidad', 'direccion', 'region'], axis=1)
-# productos.drop(['categoria1', 'categoria2', 'categoria3'], axis=1)
-
 
 def is_float(number):
     """
@@ -413,7 +432,7 @@ def is_float(number):
 
 def get_initial_cleanup(df_productos):
     """
-    Realizar una serie de limpiezas y extracciones iniciales
+    Realiza una serie de limpiezas y extracciones iniciales
     :param df_productos: Dataframe PRODUCTOS
     :return: Dataframe con nuevas columnas
     """
@@ -427,6 +446,36 @@ def get_initial_cleanup(df_productos):
         stop = time.time()
         print("get_initial_cleanup:", round(stop-start, 3),"segs")
         return df
+    except Exception as e:
+        raise
+
+
+def get_top_words_dummy_vars(df, word_column, top_word_list, prefix):
+    """
+    Toma una columna con palabras y una lista de "palabras mas frecuentes" y devuelve una matriz dummy
+    en donde cada columna representa una palabra frecuenta y mapea los correspondientes '1' si en la
+    columna con palabras aparece el target deseado.
+
+    :param df: DataFrame con la lista de palabras a convetir a dummy
+    :param word_column: Columna el DataFrame 'df' que contiene las palabras
+    :param top_word_list: Lista con las palabras sobre las cuales mapear las dummys
+    :param prefix: Prefijo para agregar a las nueva columnas
+    :return: DataFrame de dummies
+    """
+    try:
+        dummy_df = pd.DataFrame(0, index=df.index, columns=top_word_list)
+        for idx, row in df.iterrows():
+            palabras_encontradas = []
+            for palabra in row[word_column].split(' '):
+                for top_word in top_word_list:
+                    if palabra == top_word:
+                        palabras_encontradas.append(top_word)
+            if len(palabras_encontradas) == 0:
+                dummy_df.loc[idx, top_word_list[-1]] = 1
+            else:
+                dummy_df.loc[idx, palabras_encontradas] = 1
+
+        return dummy_df.add_prefix(prefix)
     except Exception as e:
         raise
 

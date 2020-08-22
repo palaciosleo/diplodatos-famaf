@@ -30,7 +30,6 @@ def main():
 
         productos['id_referencia'] = tools.get_idreferencia(productos)
 
-
         # Preparo el dataset con columnas auxiliarees de cantidad y um
         productos = tools.get_initial_cleanup(productos)
 
@@ -55,14 +54,18 @@ def main():
         del um_limpia
         del cant_limpia
 
-        productos = tools.get_marca_dummy(productos)
+        productos_dummy_df = tools.get_marca_producto_dummy(productos)
+        productos = pd.merge(productos, productos_dummy_df, left_index=True, right_index=True)
+
+        del productos_dummy_df
+
         productos = pd.concat([productos, pd.get_dummies(productos['um_limpia'], prefix='um')], axis=1)
 
         productos_col_drop = ['marca', 'nombre', 'presentacion', 'categoria1', 'categoria2', 'categoria3',
                               'id_referencia', 'nombre_depurado', 'presentacion_depurada', 'um_en_presentacion',
                               'cantidad_en_presentacion', 'cant_en_nombre_prod', 'um_en_nombre_prod']
 
-        #productos.drop(columns=productos_col_drop, inplace=True)
+        productos.drop(columns=productos_col_drop, inplace=True)
 
         sucursales = tools.get_provincia_dummy(sucursales)
         sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['provincia_depurada'], prefix='prov')], axis=1)
@@ -81,6 +84,8 @@ def main():
         sucursales.drop(columns=sucursales_col_drop, inplace=True)
 
         precios = tools.drop_precios_duplicados(precios)
+        precios = pd.concat([precios, pd.get_dummies(precios['fecha'], prefix='fecha')], axis=1)
+
 
         precio_sucursal = pd.merge(precios, sucursales, left_on='sucursal_id', right_on='id', how='left')
 
