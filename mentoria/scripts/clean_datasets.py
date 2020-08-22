@@ -115,13 +115,16 @@ def main():
         precio_sucursal_producto.drop(columns=['precio_mean', 'precio_mean_diff', 'um_limpia', 'cant_limpia', 'factor_normalizador', 'precio_normalizado'],
                                       inplace=True)
 
-        precio_sucursal_producto.drop(columns=['marca', 'nombre', 'categoria1', 'categoria2', 'categoria1', 'nombre_depurado',
-                                               'presentacion_depurada', 'um_en_presentacion', 'cantidad_en_presentacion',
-                                               'cant_en_nombre_prod', 'um_en_nombre_prod', 'precio', 'producto_id',
-                                               'sucursal_id', 'fecha', 'precio_numerario_normalizado',  'cuartil_25',
-                                               'cuartil_75', 'rdo_ri_geo', 'marca_depurada', 'marca_dummy', 'region',
-                                               'relat_cuartil_25', 'relat_cuartil_75', 'rdo_ri_geo_relativo'],
-                                      inplace=True)
+        print(precio_sucursal_producto.columns)
+
+        precio_sucursal_producto.drop(columns=['precio', 'producto_id', 'sucursal_id', 'fecha',
+                                               'region', 'cuartil_25', 'cuartil_75',
+                                               'rdo_ri_geo', 'marca_depurada', 'nombre_marca', 'nombre_marca_depurado',
+                                               'precio_numerario_normalizado', 'relat_cuartil_25', 'relat_cuartil_75',
+                                               'rdo_ri_geo_relativo'], inplace=True)
+
+
+
 
         #pd.to_pickle(precio_sucursal_producto, '../models/full_precio_sucursal_producto.pkl', compression="zip", protocol=4)
         pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip", protocol=4)
