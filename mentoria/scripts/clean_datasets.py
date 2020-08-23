@@ -54,7 +54,7 @@ def main():
         del um_limpia
         del cant_limpia
 
-        productos_dummy_df = tools.get_marca_producto_dummy(productos)
+        productos_dummy_df = tools.get_marca_producto_dummy(productos, 100)
         productos = pd.merge(productos, productos_dummy_df, left_index=True, right_index=True)
 
         del productos_dummy_df
