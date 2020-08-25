@@ -54,7 +54,7 @@ def main():
         del um_limpia
         del cant_limpia
 
-        productos_dummy_df = tools.get_marca_producto_dummy(productos, 100)
+        productos_dummy_df = tools.get_marca_producto_dummy(productos, 400)
         productos = pd.merge(productos, productos_dummy_df, left_index=True, right_index=True)
 
         del productos_dummy_df
@@ -65,7 +65,7 @@ def main():
                               'id_referencia', 'nombre_depurado', 'presentacion_depurada', 'um_en_presentacion',
                               'cantidad_en_presentacion', 'cant_en_nombre_prod', 'um_en_nombre_prod']
 
-        # productos.drop(columns=productos_col_drop, inplace=True)
+        productos.drop(columns=productos_col_drop, inplace=True)
 
         sucursales = tools.get_provincia_dummy(sucursales)
         sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['provincia_depurada'], prefix='prov')], axis=1)
@@ -81,7 +81,7 @@ def main():
                                  'nom_provincia', 'provincia_depurada', 'sucursaltipo_depurado',
                                  'banderaDescripcion_depurado', 'banderaDescripcion_dummy']
 
-        # sucursales.drop(columns=sucursales_col_drop, inplace=True)
+        sucursales.drop(columns=sucursales_col_drop, inplace=True)
 
         precios = tools.drop_precios_duplicados(precios)
         precios = pd.concat([precios, pd.get_dummies(precios['fecha'], prefix='fecha')], axis=1)
@@ -112,22 +112,20 @@ def main():
         stop = time.time()
         print("\n\n>>>>>>>>>>>>FIN:", round(stop - start, 3), "segs")
 
-        # precio_sucursal_producto.drop(columns=['precio_mean', 'precio_mean_diff', 'um_limpia', 'cant_limpia', 'factor_normalizador', 'precio_normalizado'],
-        #                               inplace=True)
+        precio_sucursal_producto.drop(columns=['precio_mean', 'precio_mean_diff', 'um_limpia', 'cant_limpia', 'factor_normalizador', 'precio_normalizado'],
+                                      inplace=True)
 
-        # print(precio_sucursal_producto.columns)
-        #
-        # precio_sucursal_producto.drop(columns=['precio', 'producto_id', 'sucursal_id', 'fecha',
-        #                                        'region', 'cuartil_25', 'cuartil_75',
-        #                                        'rdo_ri_geo', 'marca_depurada', 'nombre_marca', 'nombre_marca_depurado',
-        #                                        'precio_numerario_normalizado', 'relat_cuartil_25', 'relat_cuartil_75',
-        #                                        'rdo_ri_geo_relativo'], inplace=True)
+        precio_sucursal_producto.drop(columns=['precio', 'producto_id', 'sucursal_id', 'fecha',
+                                               'region', 'cuartil_25', 'cuartil_75',
+                                               'rdo_ri_geo', 'marca_depurada', 'nombre_marca', 'nombre_marca_depurado',
+                                               'precio_numerario_normalizado', 'relat_cuartil_25', 'relat_cuartil_75',
+                                               'rdo_ri_geo_relativo'], inplace=True)
 
 
 
 
-        pd.to_pickle(precio_sucursal_producto, '../models/full_precio_sucursal_producto.pkl', compression="zip", protocol=4)
-        # pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto.pkl', compression="zip", protocol=4)
+        # pd.to_pickle(precio_sucursal_producto, '../models/full_precio_sucursal_producto.pkl', compression="zip", protocol=4)
+        pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto_400.pkl', compression="zip", protocol=4)
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
 
