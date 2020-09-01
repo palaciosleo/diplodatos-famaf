@@ -125,6 +125,8 @@ def main():
 
 
         # pd.to_pickle(precio_sucursal_producto, '../models/full_precio_sucursal_producto.pkl', compression="zip", protocol=4)
+
+
         pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto_400.pkl', compression="zip", protocol=4)
     except Exception as e:
         logger.error('%s | %s', 'main', str(e))
