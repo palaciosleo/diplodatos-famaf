@@ -25,6 +25,20 @@ def function_model(df):
         raise
 
 
+def get_mean_precio(df):
+    """
+    Calcula el precio medio del producto por region
+    :param df:
+    :return:
+    """
+    try:
+        mean_precio_x_prod = df[['precio', 'producto_id']].groupby('producto_id',).mean().rename(columns={'precio':'precio_producto_mean'})
+        df = pd.merge(df, mean_precio_x_prod, left_on='producto_id', right_index=True)
+        return df
+    except Exception as e:
+        raise
+
+
 def get_precio_numerario_normalizado(df, producto_numerario_id):
     """
     Calcula el precio normalizado del bien numerario considerando la media por fecha
@@ -96,6 +110,50 @@ def get_precio_relativo(df, producto_numerario_id='7794000960077'):
         df['precio_relativo'] = df['precio_normalizado'] / df['precio_numerario_normalizado']
         stop = time.time()
         print("get_precio_relativo:", round(stop - start, 3), "segs")
+        return df
+    except Exception as e:
+        raise
+
+
+def get_fecha_anterior(fecha_actual, fechas):
+    try:
+        idx_actual = np.where(fechas == fecha_actual)[0][0]
+        if idx_actual == 0:
+            return fecha_actual
+        else:
+            return fechas[idx_actual - 1]
+    except Exception as e:
+        raise
+
+
+def get_precio_anterior(df):
+    try:
+        start = time.time()
+        fechas = df['fecha'].unique()
+
+        df['fecha_anterior'] = [get_fecha_anterior(row['fecha'], fechas) for idx, row in df.iterrows()]
+        precios_grouped = df.groupby(['producto_id', 'fecha', 'provincia'])['precio'].mean()
+
+        lista_precios = []
+        bandera = 50000
+        i = 0
+
+        for idx, row in df.iterrows():
+            try:
+                precio_old = precios_grouped.loc[(row['producto_id'], row['fecha_anterior'], row['provincia'])]
+            except:
+                precio_old = row['precio']
+            lista_precios.append(precio_old)
+            if i > bandera:
+                duration = round((time.time() - start), 3)
+                print(">>>", bandera, '- Duration:', duration)
+                bandera = bandera + 50000
+                start = time.time()
+            i += 1
+        df['precio_anterior'] = lista_precios
+
+        stop = time.time()
+        print("get_precio_anterior:", round(stop - start, 3), "segs")
         return df
     except Exception as e:
         raise

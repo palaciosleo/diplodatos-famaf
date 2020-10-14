@@ -30,6 +30,8 @@ def main():
 
         productos['id_referencia'] = tools.get_idreferencia(productos)
 
+        precios = tools.get_mean_precio(precios)
+
         # Preparo el dataset con columnas auxiliarees de cantidad y um
         productos = tools.get_initial_cleanup(productos)
 
@@ -76,7 +78,7 @@ def main():
         sucursales = tools.get_banderaDescripcion_dummy(sucursales)
         sucursales = pd.concat([sucursales, pd.get_dummies(sucursales['banderaDescripcion_dummy'], prefix='banddesc')], axis=1)
 
-        sucursales_col_drop = ['comercioId', 'banderaId', 'banderaDescripcion', 'comercioRazonSocial', 'provincia',
+        sucursales_col_drop = ['comercioId', 'banderaId', 'banderaDescripcion', 'comercioRazonSocial',
                                  'localidad', 'direccion', 'lat', 'lng', 'sucursalNombre', 'sucursalTipo',
                                  'nom_provincia', 'provincia_depurada', 'sucursaltipo_depurado',
                                  'banderaDescripcion_depurado', 'banderaDescripcion_dummy']
@@ -86,8 +88,9 @@ def main():
         precios = tools.drop_precios_duplicados(precios)
         precios = pd.concat([precios, pd.get_dummies(precios['fecha'], prefix='fecha')], axis=1)
 
-
         precio_sucursal = pd.merge(precios, sucursales, left_on='sucursal_id', right_on='id', how='left')
+
+        precio_sucursal = tools.get_precio_anterior(precio_sucursal)
 
         del precios
         del sucursales
@@ -125,7 +128,6 @@ def main():
 
 
         # pd.to_pickle(precio_sucursal_producto, '../models/full_precio_sucursal_producto.pkl', compression="zip", protocol=4)
-
 
         pd.to_pickle(precio_sucursal_producto, '../models/precio_sucursal_producto_400.pkl', compression="zip", protocol=4)
     except Exception as e:
